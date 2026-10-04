@@ -1,0 +1,15 @@
+                       ╲      │      ╱
+                        ╲     │     ╱
+                         ╲    │    ╱
+                           ▄█████▄
+                         ▄█████████▄
+                    ──── ███████████ ────
+                         ▀█████████▀
+                           ▀█████▀
+                         ╱    │    ╲
+                        ╱     │     ╲
+                       ╱      │      ╲
+
+                       H E L I O S D B
+        The Database Platform for the Next Generation
+PostgreSQL · MySQL · Vector · Graph · Branching · Time-travel

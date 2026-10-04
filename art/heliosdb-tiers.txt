@@ -1,0 +1,12 @@
+                        H E L I O S D B
+           From embedded edge to frontier distributed
+
+    ▄████████████▄       ▄████████████▄       ▄████████████▄
+   ████████████████     ████████████████     ████████████████
+   ██▀▀▀▀▀▀▀▀▀▀▀▀██     ██▀▀▀▀▀▀▀▀▀▀▀▀██     ██▀▀▀▀▀▀▀▀▀▀▀▀██
+   ██    NANO    ██ ──► ██    LITE    ██ ──► ██    FULL    ██
+   ██  embedded  ██     ██ production ██     ██  frontier  ██
+   ██ Apache 2.0 ██     ██  SSPL-1.0  ██     ██ enterprise ██
+   ▀██▄▄▄▄▄▄▄▄▄▄██▀     ▀██▄▄▄▄▄▄▄▄▄▄██▀     ▀██▄▄▄▄▄▄▄▄▄▄██▀
+
+One cluster · 14 wire protocols · PostgreSQL & MySQL compatible

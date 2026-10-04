@@ -1,0 +1,10 @@
+                     H E L I O S D B
+One cluster  ·  14 wire protocols  ·  zero vendor lock-in
+
+  PostgreSQL ──┤      ▄███████████▄      ├── DB2
+       MySQL ──┤     ███████████████     ├── Snowflake
+     MongoDB ──┤    ██▀▀▀▀▀▀▀▀▀▀▀▀▀██    ├── Databricks
+       Redis ──┼──► ██   HeliosDB  ██ ◄──┼── Pinecone
+   Cassandra ──┤    ██ one cluster ██    ├── ClickHouse
+      Oracle ──┤    ██▄▄▄▄▄▄▄▄▄▄▄▄▄██    ├── HTTP
+       MSSQL ──┤     ▀█████████████▀     ├── S3

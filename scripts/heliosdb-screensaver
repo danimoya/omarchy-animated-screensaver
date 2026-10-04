@@ -1,0 +1,235 @@
+#!/bin/bash
+
+# heliosdb-screensaver — HeliosDB-branded screensaver for Omarchy.
+#
+# Same mechanism as the stock `omarchy-screensaver`: a fullscreen terminal
+# (class org.omarchy.screensaver) running ttfx effects over ASCII art. Instead
+# of one fixed logo it rotates through the HeliosDB arts in
+# ~/.config/omarchy/branding/screensavers/, one per effect run, holds each
+# finished art on screen long enough to read, and colors every effect with
+# the heliosdb.com palette.
+#
+# Usage:
+#   heliosdb-screensaver launch [force]   open the screensaver on every monitor (what idle calls)
+#   heliosdb-screensaver run              the loop inside the terminal (used by launch)
+#   heliosdb-screensaver preview [art] [effect]   play one art once in the current terminal
+#   heliosdb-screensaver list             list arts and the rotation position
+
+set -u
+
+SCRIPT_DIR=$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")
+ART_DIR="${OMARCHY_SCREENSAVER_ART_DIR:-$SCRIPT_DIR/../art}"
+STATE_DIR="$HOME/.local/state/omarchy/heliosdb-screensaver"
+STATE_FILE="$STATE_DIR/index"
+
+# Rotation order. Each ttfx run advances to the next art; the position is
+# persisted so consecutive idle sessions keep rotating instead of restarting.
+ARTS=(heliosdb-logo heliosdb-branching heliosdb-sun heliosdb-protocols heliosdb-tiers heliosdb-nano)
+
+# Effects run at 80 fps (2/3 of the stock 120, so a third slower). After an
+# effect finishes, the art stays on screen for as long as the effect took,
+# and at least HOLD_MIN_SECONDS, before the next art starts.
+FRAME_RATE=${FRAME_RATE:-80}
+HOLD_MIN_SECONDS=${HOLD_MIN_SECONDS:-10}
+
+# heliosdb.com palette (css :root --neon-* variables, no leading #).
+PURPLE=9e8cfc BLUE=8ae8ff LIME=c4f042 ORANGE=ffa63e RED=ff6b6b WHITE=ffffff
+
+# Final colors each art settles into once its effect finishes.
+declare -A ART_STOPS=(
+  [heliosdb-logo]="$PURPLE $BLUE"          # site --gradient-primary
+  [heliosdb-sun]="$RED $ORANGE $WHITE"     # warm Helios sun
+  [heliosdb-tiers]="$BLUE $LIME"           # site --gradient-accent
+  [heliosdb-branching]="$PURPLE $LIME"
+  [heliosdb-protocols]="$LIME $BLUE $PURPLE"
+  [heliosdb-nano]="$WHITE $PURPLE"
+)
+declare -A ART_DIRECTION=(
+  [heliosdb-logo]=horizontal
+  [heliosdb-sun]=vertical
+  [heliosdb-tiers]=horizontal
+  [heliosdb-branching]=diagonal
+  [heliosdb-protocols]=radial
+  [heliosdb-nano]=vertical
+)
+
+EFFECTS=(beams binarypath blackhole bouncyballs bubbles burn colorshift crumble decrypt
+  errorcorrect expand fireworks highlight laseretch matrix middleout orbittingvolley overflow
+  pour print rain randomsequence rings scattered slice slide smoke spotlights spray swarm
+  sweep synthgrid thunderstorm unstable vhstape waves wipe)
+
+# Brand colors for the parts of an effect that are not the final text.
+effect_args() {
+  case $1 in
+  beams) echo "--beam-gradient-stops $WHITE $BLUE $PURPLE" ;;
+  binarypath) echo "--binary-colors $PURPLE $BLUE" ;;
+  blackhole) echo "--blackhole-color $PURPLE --star-colors $WHITE $BLUE $PURPLE" ;;
+  bouncyballs) echo "--ball-colors $PURPLE $BLUE $LIME $ORANGE" ;;
+  bubbles) echo "--bubble-colors $PURPLE $BLUE $LIME --pop-color $WHITE" ;;
+  burn) echo "--burn-colors $RED $ORANGE $WHITE" ;;
+  colorshift) echo "--gradient-stops $PURPLE $BLUE $LIME $ORANGE" ;;
+  decrypt) echo "--ciphertext-colors 5b4fb5 $PURPLE $BLUE" ;;
+  errorcorrect) echo "--error-color $RED --correct-color $LIME" ;;
+  fireworks) echo "--firework-colors $PURPLE $BLUE $LIME $ORANGE $RED" ;;
+  matrix) echo "--rain-color-gradient $PURPLE $BLUE --highlight-color $WHITE" ;;
+  overflow) echo "--overflow-gradient-stops $PURPLE $BLUE $LIME" ;;
+  rain) echo "--rain-colors $BLUE $PURPLE" ;;
+  rings) echo "--ring-colors $PURPLE $BLUE $LIME" ;;
+  swarm) echo "--base-color $PURPLE --flash-color $LIME" ;;
+  synthgrid) echo "--grid-gradient-stops $PURPLE $BLUE" ;;
+  thunderstorm) echo "--lightning-color $BLUE --glowing-text-color $PURPLE" ;;
+  unstable) echo "--unstable-color $RED" ;;
+  waves) echo "--wave-gradient-stops $PURPLE $BLUE $LIME" ;;
+  esac
+}
+
+# Arguments that color the final text for a given art.
+art_args() {
+  local art=$1 effect=$2
+  if [[ $effect == synthgrid ]]; then
+    echo "--text-gradient-stops ${ART_STOPS[$art]} --text-gradient-direction ${ART_DIRECTION[$art]}"
+  else
+    echo "--final-gradient-stops ${ART_STOPS[$art]} --final-gradient-direction ${ART_DIRECTION[$art]}"
+  fi
+}
+
+current_index() {
+  local i
+  i=$(cat "$STATE_FILE" 2>/dev/null)
+  [[ $i =~ ^[0-9]+$ ]] || i=-1
+  echo "$i"
+}
+
+# Advance the rotation and print the art name to use now.
+next_art() {
+  local i
+  i=$(( ($(current_index) + 1) % ${#ARTS[@]} ))
+  mkdir -p "$STATE_DIR"
+  echo "$i" >"$STATE_FILE"
+  echo "${ARTS[$i]}"
+}
+
+random_effect() {
+  echo "${EFFECTS[RANDOM % ${#EFFECTS[@]}]}"
+}
+
+# shellcheck disable=SC2086  # the *_args helpers intentionally expand into words
+play() {
+  local art=$1 effect=$2
+  shift 2
+  ttfx -i "$ART_DIR/$art.txt" \
+    --frame-rate "$FRAME_RATE" --canvas-width 0 --canvas-height 0 --reuse-canvas --anchor-canvas c --anchor-text c \
+    --no-eol --no-restore-cursor "$@" \
+    "$effect" $(effect_args "$effect") $(art_args "$art" "$effect")
+}
+
+# ---------------------------------------------------------------- run
+# Mirrors the loop in `omarchy-screensaver`, with art rotation and brand colors.
+run() {
+  screensaver_in_focus() {
+    hyprctl activewindow -j | jq -e '.class == "org.omarchy.screensaver"' >/dev/null 2>&1
+  }
+
+  exit_screensaver() {
+    hyprctl eval 'hl.config({ cursor = { invisible = false } })' &>/dev/null || hyprctl keyword cursor:invisible false &>/dev/null || true
+    pkill -x ttfx 2>/dev/null
+    pkill -f '[o]rg.omarchy.screensaver' 2>/dev/null
+    exit 0
+  }
+
+  trap exit_screensaver SIGINT SIGTERM SIGHUP SIGQUIT
+
+  printf '\033]11;rgb:00/00/00\007' # black background, like heliosdb.com --bg-primary
+  printf '\033[?25l'                   # hide the cursor, also during the read hold
+
+  hyprctl eval 'hl.config({ cursor = { invisible = true } })' &>/dev/null || hyprctl keyword cursor:invisible true &>/dev/null
+
+  local tty
+  tty=$(tty 2>/dev/null)
+
+  # The pty starts at 80x24 until the compositor sizes the window; ttfx measures
+  # once at startup, so wait for the real size before drawing.
+  local deadline=$((SECONDS + 2))
+  while ((SECONDS < deadline)) && [[ $(stty size 2>/dev/null) == "24 80" ]]; do
+    sleep 0.02
+  done
+
+  # Exit on any keypress or when the screensaver window loses focus.
+  check_dismissed() {
+    if read -n1 -t 1 || ! screensaver_in_focus; then
+      exit_screensaver
+    fi
+  }
+
+  local started hold hold_until
+  while true; do
+    started=$SECONDS
+    play "$(next_art)" "$(random_effect)" &
+
+    while pgrep -t "${tty#/dev/}" -x ttfx >/dev/null; do
+      check_dismissed
+    done
+
+    # Hold the finished art: as long as the effect ran, at least HOLD_MIN_SECONDS.
+    hold=$((SECONDS - started))
+    ((hold < HOLD_MIN_SECONDS)) && hold=$HOLD_MIN_SECONDS
+    hold_until=$((SECONDS + hold))
+    printf '\033[?25l'
+    while ((SECONDS < hold_until)); do
+      check_dismissed
+    done
+  done
+}
+
+# ---------------------------------------------------------------- launch
+# Reuse the stock launcher (multi-monitor handling, terminal detection, the
+# screensaver-off toggle) and only swap the command it runs in the terminal.
+launch() {
+  local upstream script
+  upstream=$(command -v omarchy-launch-screensaver) || {
+    echo "heliosdb-screensaver: omarchy-launch-screensaver not found" >&2
+    exit 1
+  }
+  script=$(sed "s|-e omarchy-screensaver\$|-e $HOME/.local/bin/heliosdb-screensaver run|" "$upstream")
+  if [[ $script != *"heliosdb-screensaver run"* ]]; then
+    echo "heliosdb-screensaver: stock launcher changed shape, running the stock screensaver instead" >&2
+    exec "$upstream" "$@"
+  fi
+  # Run it from a file, not `bash -c`: the stock launcher guards against a
+  # second instance with `pgrep -f org.omarchy.screensaver`, which would match
+  # its own argv if the script text were passed on the command line.
+  local runner result
+  runner=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/heliosdb-screensaver-launch.XXXXXX") || exit 1
+  trap 'rm -f -- "$runner"' EXIT
+  printf '%s\n' "$script" >"$runner" || exit 1
+  bash "$runner" "$@"
+  result=$?
+  exit "$result"
+}
+
+preview() {
+  local art=${1:-$(next_art)} effect=${2:-$(random_effect)}
+  [[ -f $ART_DIR/$art.txt ]] || { echo "unknown art: $art (have: ${ARTS[*]})" >&2; exit 1; }
+  echo "$art / $effect" >&2
+  play "$art" "$effect"
+}
+
+list() {
+  local i cur
+  cur=$(current_index)
+  for i in "${!ARTS[@]}"; do
+    printf '%s %s\n' "$([[ $i == "$cur" ]] && echo '*' || echo ' ')" "${ARTS[$i]}"
+  done
+  echo "(* = last shown; next idle continues from the following art)"
+}
+
+case ${1:-} in
+launch) shift; launch "$@" ;;
+run) run ;;
+preview) shift; preview "$@" ;;
+list) list ;;
+*)
+  sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
+  exit 1
+  ;;
+esac

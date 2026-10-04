@@ -1,0 +1,12 @@
+                              H E L I O S D B
+                 Git-like branching  ·  Time-travel queries
+
+main     ●────●────●────●────●────●────●────●────●────►  now
+                   ╲                       ╲
+                    ●────●────●────►        ●────●────►
+                    feature/vector-search   hotfix/2026-09
+                              ╲
+                               ●────●────►
+                               experiment/graph-rag
+
+◄──── time-travel:  SELECT * FROM orders AS OF TIMESTAMP '2026-09-01 12:00'

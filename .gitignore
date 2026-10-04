@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+rclone.conf
+*token*.json
+*credentials*.json
+*.pem
+*.key
+.cache/
+*.log

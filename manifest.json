@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "danimoya.idle",
+  "name": "Animated Screensavers for Omarchy",
+  "version": "0.1.0-dev",
+  "author": "Daniel Moya",
+  "license": "MIT",
+  "description": "Rotating ASCII screensavers with HeliosDB artwork, readable pauses, and idle integration.",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Service.qml"
+  },
+  "keepLoaded": true,
+  "omarchy": {
+    "clonedFrom": "omarchy.idle"
+  }
+}
