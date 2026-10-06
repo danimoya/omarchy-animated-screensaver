@@ -42,7 +42,9 @@ Artwork is bundled under `art/`. `OMARCHY_SCREENSAVER_ART_DIR` can supply replac
 
 ## Compatibility
 
-`compat/danimoya.indicators/` contains the original indicator adaptation for older shells, without a second plugin manifest. It is reference code, not another installable plugin. Verify clone-service resolution in the target shell before deciding whether to ship any indicator override.
+`compat/danimoya.indicators/` contains indicator reference code, without a second plugin manifest. It is not another installable plugin. Stay Awake requests `firstPartyServiceFor("omarchy.idle")`; the shell resolves that built-in ID to the enabled clone. Passing `danimoya.idle` directly is rejected by the scoped first-party API and leaves the button inactive. Verify clone-service resolution in the target shell before deciding whether to ship any indicator override.
+
+After updating an existing indicator override, run `omarchy restart shell` from an unlocked session if automatic plugin reload retains the old code. Check that both the idle service and the coffee-cup indicator change state when toggled.
 
 ## Removal
 
