@@ -42,7 +42,11 @@ Artwork is bundled under `art/`. `OMARCHY_SCREENSAVER_ART_DIR` can supply replac
 
 ## Compatibility
 
-`compat/danimoya.indicators/` contains indicator reference code, without a second plugin manifest. It is not another installable plugin. Stay Awake requests `firstPartyServiceFor("omarchy.idle")`; the shell resolves that built-in ID to the enabled clone. Passing `danimoya.idle` directly is rejected by the scoped first-party API and leaves the button inactive. Verify clone-service resolution in the target shell before deciding whether to ship any indicator override.
+`compat/danimoya.indicators/` contains indicator reference code, without a second plugin manifest. It is not another installable plugin. Custom bar widgets on Omarchy 4.5 no longer receive first-party service proxies. Stay Awake, DND, and Night Light use public commands instead, share `CommandIndicator.qml`, and refresh every five seconds. Stay Awake also watches the persisted state directory. Copy all four QML files together when updating an existing override.
+
+Failed or malformed status responses show “status unavailable; click to retry”. A click in that state retries the query instead of blindly toggling. The idle service reads timeouts through the scoped `shell.idleConfig` API, with a fallback for older shells.
+
+Run `python3 tests/check-indicators.py` after changes or Omarchy updates. The offscreen test uses synthetic commands to check clicks, external state changes, failures, and recovery without changing the desktop. Then verify the three real toggles from an unlocked session and restore the original states. Record the tested Omarchy version in `VALIDATION.md`; manifest validation alone cannot catch runtime API changes.
 
 After updating an existing indicator override, run `omarchy restart shell` from an unlocked session if automatic plugin reload retains the old code. Check that both the idle service and the coffee-cup indicator change state when toggled.
 

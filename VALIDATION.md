@@ -16,3 +16,14 @@ No publishing copy was installed into the active desktop. No runtime lock/displa
 - Automatic plugin reload retained the old indicator code; restarting the shell loaded the correction.
 - Toggled the live idle service in both directions and verified the bar's active-indicator state followed it. Stay Awake enabled reported idle disabled with screensaver and lock timers stopped.
 - The user confirmed the button issue was solved. No full idle-timeout or multi-monitor regression test was performed.
+
+## Scoped API compatibility — 2026-11-05
+
+Target: Omarchy 4.5.0-3, Hyprland 0.56.2.
+
+- Stay Awake, DND, and Night Light now use public commands instead of first-party service proxies, which are unavailable to custom bar widgets. All three share validated status parsing, failed-query feedback, and polling for external changes.
+- The idle service reads scoped `shell.idleConfig`, retaining the old full-shell fallback.
+- `python3 tests/check-indicators.py`: passed in offscreen Quickshell using synthetic state. Covers all three components, both click directions, external state changes, malformed output, command failure, and recovery.
+- Live bar checks: Stay Awake and Night Light toggled in both directions and their indicators followed the service state. DND also toggled in both directions after checking the canonical `omarchy toggle notification silencing` route. Original functional states restored: Stay Awake on, DND off, Night Light off.
+- `omarchy plugin validate .` and bundled Bash syntax checks: passed.
+- This does not complete idle-timeout, hardware, multi-monitor, fresh-install, or release testing.

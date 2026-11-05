@@ -1,21 +1,22 @@
 import QtQuick
-import qs.Ui
+import Quickshell
+import Quickshell.Io
 
-BarIndicator {
+CommandIndicator {
   id: root
-
-  // The first-party API accepts the stock id and resolves the enabled clone.
-  readonly property var idleService: bar?.shell?.firstPartyServiceFor("omarchy.idle")
-
-  active: idleService ? idleService.stayAwake : false
+  objectName: "stayAwakeIndicator"
+  statusCommand: ["omarchy", "toggle", "idle", "status"]
+  toggleCommand: ["omarchy", "toggle", "idle"]
+  statusFormat: "json"
   activeText: "󰅶"
-  inactiveText: "󰅶"
-  activeTooltipText: "Allow Idle Lock & Screensaver"
-  inactiveTooltipText: "Stay Awake"
+  inactiveText: activeText
+  enabledTooltip: "Allow Idle Lock & Screensaver"
+  disabledTooltip: "Stay Awake"
 
-  function toggle() {
-    if (root.idleService) root.idleService.setIdleEnabled(root.active)
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/indicators"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.refresh()
   }
-
-  onPressed: function() { root.toggle() }
 }
