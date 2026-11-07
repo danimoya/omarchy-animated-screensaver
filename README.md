@@ -38,6 +38,14 @@ This plugin replaces `omarchy.idle`. The root service retains the existing ID `d
 4. Enable the service through `omarchy plugin enable danimoya.idle`. Check that the stock idle service is replaced and Stay Awake still works.
 5. Screensaver and lock timeouts come from the existing shell configuration (defaults 150 and 300 seconds). The standard lock is used unless the optional live-lock wrapper is installed.
 
+If the session is already locked when the screensaver deadline arrives, idle
+requests the compatible lock service's `idleScreensaver` hook. That service
+decides whether animation is allowed behind its secure surface. An unavailable
+or disallowed hook leaves the existing lock intact. When unlocked, the normal
+screensaver launch and key/focus dismissal behavior are unchanged. During a
+lock, the renderer keeps running when the lock owns focus and leaves the pointer
+visible for the unlock panel. No animation path authenticates or unlocks.
+
 Artwork is bundled under `art/`. `OMARCHY_SCREENSAVER_ART_DIR` can supply replacement files with the same six names. `FRAME_RATE` and `HOLD_MIN_SECONDS` override 80 fps and 10 seconds. A general artwork/palette selector remains release work.
 
 ## Compatibility
@@ -47,6 +55,10 @@ Artwork is bundled under `art/`. `OMARCHY_SCREENSAVER_ART_DIR` can supply replac
 Failed or malformed status responses show “status unavailable; click to retry”. A click in that state retries the query instead of blindly toggling. The idle service reads timeouts through the scoped `shell.idleConfig` API, with a fallback for older shells.
 
 Run `python3 tests/check-indicators.py` after changes or Omarchy updates. The offscreen test uses synthetic commands to check clicks, external state changes, failures, and recovery without changing the desktop. Then verify the three real toggles from an unlocked session and restore the original states. Record the tested Omarchy version in `VALIDATION.md`; manifest validation alone cannot catch runtime API changes.
+
+Run `python3 -m unittest discover -s tests -p test_locked_screensaver.py -v` for
+the locked-idle dispatch and renderer dismissal checks. These mock compositor
+state and terminal input; an actual locked-idle/display check is still needed.
 
 After updating an existing indicator override, run `omarchy restart shell` from an unlocked session if automatic plugin reload retains the old code. Check that both the idle service and the coffee-cup indicator change state when toggled.
 

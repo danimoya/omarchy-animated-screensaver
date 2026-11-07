@@ -27,3 +27,22 @@ Target: Omarchy 4.5.0-3, Hyprland 0.56.2.
 - Live bar checks: Stay Awake and Night Light toggled in both directions and their indicators followed the service state. DND also toggled in both directions after checking the canonical `omarchy toggle notification silencing` route. Original functional states restored: Stay Awake on, DND off, Night Light off.
 - `omarchy plugin validate .` and bundled Bash syntax checks: passed.
 - This does not complete idle-timeout, hardware, multi-monitor, fresh-install, or release testing.
+
+## Locked idle startup correction — 2026-11-07
+
+- Live logs show the idle deadline fired while the session was locked, but the
+  previous command explicitly skipped `heliosdb-screensaver launch` when
+  `lock isLocked` returned true. It exited successfully without starting animation.
+- The idle service now requests the optional `lock idleScreensaver` approval hook
+  when locked, launches normally when explicitly unlocked, and refuses unknown
+  lock state. No lock acquisition, authentication or unlock behavior was added.
+- The renderer no longer dismisses because a lock surface owns focus. It keeps
+  the cursor visible while locked, retaining ordinary unlocked dismissal.
+- Seven mocked IPC/input regression tests pass; Bash syntax, manifest validation
+  and whitespace checks pass. Real locked rendering and multi-monitor behavior
+  still require runtime verification.
+- The installed copy was updated by patching only the idle launch function and
+  renderer `run()` block, preserving local artwork and launcher paths.
+  Both plugin validations and installed Bash syntax passed;
+  the shell restarted without QML errors. Idle reports enabled with Stay Awake
+  off and screensaver timeout 150 seconds. Real locked animation remains to test.

@@ -66,7 +66,9 @@ Item {
   function launchScreensaver() {
     root.screensaverStartedThisCycle = true
     screensaverLaunchGraceTimer.restart()
-    runProcess(screensaverProcess, "screensaver", "[[ $(omarchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || heliosdb-screensaver launch")
+    // A locked session needs its lock service to approve the live background.
+    // The ordinary unlocked animation keeps its existing launch path.
+    runProcess(screensaverProcess, "screensaver", "case $(omarchy-shell lock isLocked 2>/dev/null) in true) [[ $(omarchy-shell lock idleScreensaver 2>/dev/null) == ok ]] ;; false) heliosdb-screensaver launch ;; *) exit 1 ;; esac")
   }
 
   function lockSystem(reason) {

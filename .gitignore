@@ -8,3 +8,5 @@ rclone.conf
 *.key
 .cache/
 *.log
+__pycache__/
+*.py[cod]

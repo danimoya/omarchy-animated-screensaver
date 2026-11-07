@@ -130,6 +130,13 @@ run() {
     hyprctl activewindow -j | jq -e '.class == "org.omarchy.screensaver"' >/dev/null 2>&1
   }
 
+  local cursor_hidden=""
+  set_cursor_hidden() {
+    [[ $cursor_hidden == "$1" ]] && return
+    cursor_hidden=$1
+    hyprctl eval "hl.config({ cursor = { invisible = $cursor_hidden } })" &>/dev/null || hyprctl keyword cursor:invisible "$cursor_hidden" &>/dev/null || true
+  }
+
   exit_screensaver() {
     hyprctl eval 'hl.config({ cursor = { invisible = false } })' &>/dev/null || hyprctl keyword cursor:invisible false &>/dev/null || true
     pkill -x ttfx 2>/dev/null
@@ -142,7 +149,12 @@ run() {
   printf '\033]11;rgb:00/00/00\007' # black background, like heliosdb.com --bg-primary
   printf '\033[?25l'                   # hide the cursor, also during the read hold
 
-  hyprctl eval 'hl.config({ cursor = { invisible = true } })' &>/dev/null || hyprctl keyword cursor:invisible true &>/dev/null
+  # A lock surface takes focus and needs a visible pointer for its unlock UI.
+  if [[ $(omarchy-shell lock isLocked 2>/dev/null) == true ]]; then
+    set_cursor_hidden false
+  else
+    set_cursor_hidden true
+  fi
 
   local tty
   tty=$(tty 2>/dev/null)
@@ -154,10 +166,17 @@ run() {
     sleep 0.02
   done
 
-  # Exit on any keypress or when the screensaver window loses focus.
+  # Focus belongs to the lock surface while locked. Only unlocked animation
+  # runs may dismiss themselves on a key or a change of focus.
   check_dismissed() {
-    if read -n1 -t 1 || ! screensaver_in_focus; then
+    local key_read=false
+    if read -n1 -t 1; then key_read=true; fi
+    if [[ $(omarchy-shell lock isLocked 2>/dev/null) == true ]]; then
+      set_cursor_hidden false
+    elif $key_read || ! screensaver_in_focus; then
       exit_screensaver
+    else
+      set_cursor_hidden true
     fi
   }
 
